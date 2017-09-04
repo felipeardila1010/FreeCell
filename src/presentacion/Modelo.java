@@ -10,48 +10,61 @@ import java.util.Map;
 import logica.Baraja;
 import logica.Tablero;
 
-public class Modelo implements Runnable{
+public class Modelo implements Runnable {
 
     private Tablero sistemaTablero;
     private Baraja sistemaBaraja;
     private Vista ventanaPrincipal;
     private Thread hiloDibujo;
     private BufferedImage dobleBuffer;
+    private Map<String, Image> imagenesBaraja;
+    private Map<String, String> coordenadasBaraja;
+    private Map<String, Image> imagenesComponentesTablero;
+    private Map<String, String> coordenadasComponentesTablero;
 
     public Modelo() {
         hiloDibujo = new Thread(this);
     }
-    
+
     public Tablero getTablero() {
-        if(sistemaTablero == null){
+        if (sistemaTablero == null) {
             sistemaTablero = new Tablero();
         }
         return sistemaTablero;
     }
 
     public Baraja getBaraja() {
-        if(sistemaBaraja == null){
+        if (sistemaBaraja == null) {
             sistemaBaraja = new Baraja();
         }
         return sistemaBaraja;
     }
+
     public Vista getVentanaPrincipal() {
-        if(ventanaPrincipal == null){
+        if (ventanaPrincipal == null) {
             ventanaPrincipal = new Vista(this);
         }
         return ventanaPrincipal;
     }
-    
+
     public void iniciar() {
         Canvas lienzo = getVentanaPrincipal().getLienzo();
         lienzo.setSize(getVentanaPrincipal().getSize());
         dobleBuffer = new BufferedImage(lienzo.getWidth(), lienzo.getHeight(), BufferedImage.TYPE_INT_ARGB);
         getVentanaPrincipal().setVisible(true);
         getTablero().setEstaDibujando(true);
+        barajarCartas();
         hiloDibujo.start();
     }
-    
-    public void dibujar(){
+
+    public void barajarCartas() {
+        imagenesComponentesTablero = getTablero().getComponentesTablero();
+        coordenadasComponentesTablero = getTablero().getCoordenadasComponentesTablero();
+        imagenesBaraja = getBaraja().getImagesLists();
+        coordenadasBaraja = getBaraja().asignarPosicionesCartas(imagenesBaraja);
+    }
+
+    public void dibujar() {
         Canvas lienzo = getVentanaPrincipal().getLienzo();
         Graphics lapiz = lienzo.getGraphics();
         Graphics lapizInvisible = dobleBuffer.getGraphics();
@@ -60,26 +73,27 @@ public class Modelo implements Runnable{
         lapizInvisible.fillRect(0, 0, lienzo.getWidth(), lienzo.getHeight());
         lapizInvisible.setColor(new Color(255, 155, 54));
         
-        dibujarTablero(lapizInvisible, lienzo);        
+        dibujarTablero(lapizInvisible, lienzo, imagenesComponentesTablero, coordenadasComponentesTablero);
+        dibujarTablero(lapizInvisible, lienzo, imagenesBaraja, coordenadasBaraja);
         lapiz.drawImage(dobleBuffer, 0, 0, lienzo);
     }
-
-    private void dibujarTablero(Graphics lapiz, Canvas lienzo) {
-        Map<String, Image> imagenesLista = getBaraja().getImagesLists();
-        Map<String, String> coordenadasImagenes = getBaraja().asignarPosicionesCartas(imagenesLista);
+    
+    
+    public void dibujarTablero(Graphics lapiz, Canvas lienzo, Map<String, Image> imagenes, Map<String, String> coordenadas) {
         String[] dividirCoordenadas;
-        
+
         Map.Entry<String, Image> mapTemporal;
-        Iterator<Map.Entry<String, Image>> imagenesTemporal =imagenesLista.entrySet().iterator();
+        Iterator<Map.Entry<String, Image>> imagenesTemporal = imagenes.entrySet().iterator();
         while (imagenesTemporal.hasNext()) {
             mapTemporal = imagenesTemporal.next();
-            dividirCoordenadas = coordenadasImagenes.get(mapTemporal.getKey()).split(",");
-            lapiz.drawImage(mapTemporal.getValue(), Integer.parseInt(dividirCoordenadas[0]),Integer.parseInt(dividirCoordenadas[1]), lienzo);
+            dividirCoordenadas = coordenadas.get(mapTemporal.getKey()).split(",");
+            lapiz.drawImage(mapTemporal.getValue(), Integer.parseInt(dividirCoordenadas[0]), Integer.parseInt(dividirCoordenadas[1]), lienzo);
         }
     }
+
     @Override
     public void run() {
-        while (getTablero().isEstaDibujando()) {            
+        while (getTablero().isEstaDibujando()) {
             dibujar();
         }
     }
